@@ -259,7 +259,7 @@ export function createPaymentForm(req: Request, res: Response) {
     wsb_order_num: wsbOrderNum,
     wsb_currency_id: wsbCurrencyId,
     wsb_total: wsbTotal,
-    wsb_description: `Payment for order ${wsbOrderNum}`,
+    wsb_description: `Payment for order ${wsbOrderNum}`.substring(0, 255),
     wsb_return_url: wsbReturnUrl,
     wsb_cancel_return_url: wsbCancelReturnUrl,
     wsb_notify_url: wsbNotifyUrl,
@@ -289,7 +289,7 @@ export function createPaymentForm(req: Request, res: Response) {
 </head>
 <body>
   <div class="loading">Перенаправление на страницу оплаты...</div>
-  <form id="webpayForm" method="POST" action="${WEBPAY_API_URL}/webpay">
+  <form id="webpayForm" method="POST" action="${WEBPAY_API_URL}">
     ${Object.entries(webpayParams).map(([key, value]) => 
       `<input type="hidden" name="${key}" value="${value}">`
     ).join("")}
