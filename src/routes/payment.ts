@@ -19,7 +19,13 @@ const payments = new Map<string, {
 
 function generateWebPaySignature(params: Record<string, any>, secretKey: string): string {
   const sortedKeys = Object.keys(params).filter(key => key !== "wsb_signature").sort();
-  const signatureString = sortedKeys.map(key => `${key}=${params[key]}`).join("&") + secretKey;
+  const signatureString = sortedKeys.map(key => {
+    const value = params[key];
+    if (Array.isArray(value)) {
+      return `${key}=${value.join(",")}`;
+    }
+    return `${key}=${value}`;
+  }).join("&") + secretKey;
   return crypto.createHash("sha1").update(signatureString).digest("hex").toUpperCase();
 }
 
