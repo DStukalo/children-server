@@ -53,17 +53,17 @@ export async function createPayment(req: Request, res: Response) {
     const wsbNotifyUrl = `${baseUrl}/api/payment/callback`;
 
     const webpayParams: Record<string, any> = {
-      wsb_version: 2,
+      wsb_version: "2",
       wsb_storeid: WEBPAY_STORE_ID,
       wsb_seed: wsbSeed,
-      wsb_test: wsbTest,
+      wsb_test: String(wsbTest),
       wsb_order_num: wsbOrderNum,
       wsb_currency_id: wsbCurrencyId,
       wsb_total: wsbTotal,
       wsb_return_url: wsbReturnUrl,
       wsb_cancel_return_url: wsbCancelReturnUrl,
       wsb_notify_url: wsbNotifyUrl,
-      wsb_redirect: 1,
+      wsb_redirect: "1",
       wsb_return_format: "json",
       wsb_language_id: "russian",
     };
