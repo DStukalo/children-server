@@ -34,8 +34,11 @@ export async function register(req: Request, res: Response) {
 
 		await insertUser(user);
 
+		const token = crypto.randomUUID();
+
 		res.json({
 			message: "Registered",
+			token,
 			user: serializeUser(user),
 		});
 	} catch (error) {
