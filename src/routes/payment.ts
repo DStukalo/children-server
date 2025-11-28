@@ -77,7 +77,7 @@ export async function createPayment(req: Request, res: Response) {
     const wsbSignature = generateWebPaySignature(wsbSeed, WEBPAY_STORE_ID, wsbOrderNum, wsbTest, wsbCurrencyId, wsbTotalString, WEBPAY_SECRET_KEY);
     webpayParams.wsb_signature = wsbSignature;
 
-    console.log(`[Payment API] Creating payment: ${paymentId}, Order: ${wsbOrderNum}, Amount: ${wsbTotal}`);
+    console.log(`[Payment API] Creating payment: ${paymentId}, Order: ${wsbOrderNum}, Amount: ${wsbTotalString}`);
     console.log(`[Payment API] Calling WebPay API: ${WEBPAY_API_ENDPOINT}`);
 
     payments.set(paymentId, {
