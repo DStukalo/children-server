@@ -289,7 +289,7 @@ export function createPaymentForm(req: Request, res: Response) {
 </head>
 <body>
   <div class="loading">Перенаправление на страницу оплаты...</div>
-  <form id="webpayForm" method="POST" action="${WEBPAY_API_URL}">
+  <form id="webpayForm" method="POST" action="${WEBPAY_API_URL}/payment">
     ${Object.entries(webpayParams).map(([key, value]) => 
       `<input type="hidden" name="${key}" value="${value}">`
     ).join("")}
