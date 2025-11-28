@@ -54,7 +54,7 @@ export async function createPayment(req: Request, res: Response) {
 
     const itemName = description.substring(0, 255);
     const itemQuantity = 1;
-    const itemPrice = amount % 1 === 0 ? Number(amount) : parseFloat(amount.toFixed(2));
+    const itemPriceString = amount % 1 === 0 ? `${Number(amount)}` : amount.toFixed(2);
 
     const webpayParams: Record<string, any> = {
       wsb_version: 2,
@@ -65,7 +65,7 @@ export async function createPayment(req: Request, res: Response) {
       wsb_currency_id: wsbCurrencyId,
       wsb_invoice_item_name: [itemName],
       wsb_invoice_item_quantity: [itemQuantity],
-      wsb_invoice_item_price: [itemPrice.toFixed(2)],
+      wsb_invoice_item_price: [itemPriceString],
       wsb_total: wsbTotalString,
       wsb_return_url: wsbReturnUrl,
       wsb_cancel_return_url: wsbCancelReturnUrl,
