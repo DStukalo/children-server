@@ -14,7 +14,6 @@ import {
   paymentCallback,
   handlePaymentSuccess,
   handlePaymentCancel,
-  createPaymentForm,
   createTestPaymentPage,
   handleTestPaymentSuccess,
   handleTestPaymentFail
@@ -40,7 +39,6 @@ app.patch("/me", auth, updateUser);
 app.post("/api/payment/create", auth, createPayment);
 app.get("/api/payment/status/:paymentId", auth, checkPaymentStatus);
 app.post("/api/payment/callback", paymentCallback);
-app.get("/api/payment/form/:paymentId", createPaymentForm);
 app.get("/api/payment/success", handlePaymentSuccess);
 app.get("/api/payment/cancel", handlePaymentCancel);
 

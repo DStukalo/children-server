@@ -1,9 +1,11 @@
 import { Request, Response } from "express";
 import crypto from "crypto";
+import axios from "axios";
 
 const WEBPAY_STORE_ID = process.env.WEBPAY_STORE_ID || "";
 const WEBPAY_SECRET_KEY = process.env.WEBPAY_SECRET_KEY || "";
 const WEBPAY_API_URL = process.env.WEBPAY_API_URL || "https://securesandbox.webpay.by";
+const WEBPAY_API_ENDPOINT = `${WEBPAY_API_URL}/api/v1/payment`;
 
 const payments = new Map<string, {
   paymentId: string;
@@ -15,8 +17,8 @@ const payments = new Map<string, {
   createdAt: Date;
 }>();
 
-function generateWebPaySignature(params: Record<string, string | number>, secretKey: string): string {
-  const sortedKeys = Object.keys(params).sort();
+function generateWebPaySignature(params: Record<string, any>, secretKey: string): string {
+  const sortedKeys = Object.keys(params).filter(key => key !== "wsb_signature").sort();
   const signatureString = sortedKeys.map(key => `${key}=${params[key]}`).join("&") + secretKey;
   return crypto.createHash("sha1").update(signatureString).digest("hex").toUpperCase();
 }
@@ -41,31 +43,36 @@ export async function createPayment(req: Request, res: Response) {
     
     const baseUrl = process.env.PRODUCTION_URL || (req.protocol + "://" + req.get("host"));
     
-    const wsbSeed = crypto.randomBytes(16).toString("hex");
+    const wsbSeed = Date.now().toString();
     const wsbOrderNum = orderId;
     const wsbCurrencyId = currency;
-    const wsbTotal = amount.toFixed(2);
-    const wsbTest = WEBPAY_API_URL.includes("sandbox") ? "1" : "0";
+    const wsbTotal = parseFloat(amount.toFixed(2));
+    const wsbTest = WEBPAY_API_URL.includes("sandbox") ? 1 : 0;
     const wsbReturnUrl = `${baseUrl}/api/payment/success?paymentId=${paymentId}`;
     const wsbCancelReturnUrl = `${baseUrl}/api/payment/cancel?paymentId=${paymentId}`;
     const wsbNotifyUrl = `${baseUrl}/api/payment/callback`;
 
-  const webpayParams: Record<string, string | number> = {
-    "*scart": "",
-    wsb_version: "2",
-    wsb_storeid: WEBPAY_STORE_ID,
-    wsb_seed: wsbSeed,
-    wsb_test: wsbTest,
-    wsb_order_num: wsbOrderNum,
-    wsb_currency_id: wsbCurrencyId,
-    wsb_total: wsbTotal,
-    wsb_return_url: wsbReturnUrl,
-    wsb_cancel_return_url: wsbCancelReturnUrl,
-    wsb_notify_url: wsbNotifyUrl,
-  };
+    const webpayParams: Record<string, any> = {
+      wsb_version: 2,
+      wsb_storeid: WEBPAY_STORE_ID,
+      wsb_seed: wsbSeed,
+      wsb_test: wsbTest,
+      wsb_order_num: wsbOrderNum,
+      wsb_currency_id: wsbCurrencyId,
+      wsb_total: wsbTotal,
+      wsb_return_url: wsbReturnUrl,
+      wsb_cancel_return_url: wsbCancelReturnUrl,
+      wsb_notify_url: wsbNotifyUrl,
+      wsb_redirect: 1,
+      wsb_return_format: "json",
+      wsb_language_id: "russian",
+    };
 
     const wsbSignature = generateWebPaySignature(webpayParams, WEBPAY_SECRET_KEY);
     webpayParams.wsb_signature = wsbSignature;
+
+    console.log(`[Payment API] Creating payment: ${paymentId}, Order: ${wsbOrderNum}, Amount: ${wsbTotal}`);
+    console.log(`[Payment API] Calling WebPay API: ${WEBPAY_API_ENDPOINT}`);
 
     payments.set(paymentId, {
       paymentId,
@@ -77,16 +84,68 @@ export async function createPayment(req: Request, res: Response) {
       createdAt: new Date(),
     });
 
-    const formUrl = `${baseUrl}/api/payment/form/${paymentId}`;
+    console.log(`[Payment API] Sending request to WebPay API: ${WEBPAY_API_ENDPOINT}`);
+    console.log(`[Payment API] Request params:`, JSON.stringify(webpayParams, null, 2));
+
+    const webpayResponse = await axios.post(WEBPAY_API_ENDPOINT, webpayParams, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+      maxRedirects: 0,
+      validateStatus: () => true,
+    });
+
+    console.log(`[Payment API] WebPay response status: ${webpayResponse.status}`);
+    console.log(`[Payment API] WebPay response headers:`, JSON.stringify(webpayResponse.headers, null, 2));
+    console.log(`[Payment API] WebPay response data:`, JSON.stringify(webpayResponse.data, null, 2));
+
+    let redirectUrl = null;
+
+    if (webpayResponse.status === 200) {
+      if (webpayResponse.data && typeof webpayResponse.data === "object") {
+        if (webpayResponse.data.redirectUrl) {
+          redirectUrl = webpayResponse.data.redirectUrl;
+        } else if (webpayResponse.data.url) {
+          redirectUrl = webpayResponse.data.url;
+        } else if (webpayResponse.data.paymentUrl) {
+          redirectUrl = webpayResponse.data.paymentUrl;
+        }
+      }
+      
+      if (!redirectUrl && webpayResponse.headers.location) {
+        redirectUrl = webpayResponse.headers.location;
+      }
+    } else if (webpayResponse.status >= 300 && webpayResponse.status < 400) {
+      redirectUrl = webpayResponse.headers.location || webpayResponse.headers.Location;
+    }
+
+    if (!redirectUrl) {
+      console.error("[Payment API] No redirect URL in response");
+      return res.status(500).json({ 
+        message: "Failed to get payment URL from WebPay",
+        status: webpayResponse.status,
+        data: webpayResponse.data,
+        headers: webpayResponse.headers
+      });
+    }
+
+    console.log(`[Payment API] ✅ Redirect URL received: ${redirectUrl}`);
 
     res.json({
       success: true,
       paymentId,
-      paymentUrl: formUrl,
+      paymentUrl: redirectUrl,
       message: "Payment URL generated"
     });
-  } catch (error) {
-    console.error("Failed to create payment", error);
+  } catch (error: any) {
+    console.error("[Payment API] Failed to create payment", error);
+    if (error.response) {
+      console.error("[Payment API] WebPay error response:", error.response.data);
+      return res.status(500).json({ 
+        message: "WebPay API error",
+        details: error.response.data 
+      });
+    }
     res.status(500).json({ message: "Internal server error" });
   }
 }
@@ -227,123 +286,6 @@ export async function handlePaymentCancel(req: Request, res: Response) {
     setTimeout(() => {
       window.location.href = 'app://payment-fail?paymentId=${paymentId}';
     }, 1000);
-  </script>
-</body>
-</html>
-  `;
-
-  res.send(html);
-}
-
-export function createPaymentForm(req: Request, res: Response) {
-  const { paymentId } = req.params;
-  
-  const payment = payments.get(paymentId);
-  if (!payment) {
-    console.error(`[Payment Form] Payment not found: ${paymentId}`);
-    return res.status(404).send("Payment not found");
-  }
-
-  const wsbSeed = crypto.randomBytes(16).toString("hex");
-  const wsbOrderNum = payment.orderId;
-  const wsbCurrencyId = "BYN";
-  const wsbTotal = payment.amount.toFixed(2);
-  const wsbTest = WEBPAY_API_URL.includes("sandbox") ? "1" : "0";
-  const baseUrl = process.env.PRODUCTION_URL || (req.protocol + "://" + req.get("host"));
-  const wsbReturnUrl = `${baseUrl}/api/payment/success?paymentId=${paymentId}`;
-  const wsbCancelReturnUrl = `${baseUrl}/api/payment/cancel?paymentId=${paymentId}`;
-  const wsbNotifyUrl = `${baseUrl}/api/payment/callback`;
-
-  const webpayParams: Record<string, string | number> = {
-    "*scart": "",
-    wsb_version: "2",
-    wsb_storeid: WEBPAY_STORE_ID,
-    wsb_seed: wsbSeed,
-    wsb_test: wsbTest,
-    wsb_order_num: wsbOrderNum,
-    wsb_currency_id: wsbCurrencyId,
-    wsb_total: wsbTotal,
-    wsb_return_url: wsbReturnUrl,
-    wsb_cancel_return_url: wsbCancelReturnUrl,
-    wsb_notify_url: wsbNotifyUrl,
-  };
-
-  const wsbSignature = generateWebPaySignature(webpayParams, WEBPAY_SECRET_KEY);
-  webpayParams.wsb_signature = wsbSignature;
-
-  console.log(`[Payment Form] Generating form for paymentId: ${paymentId}`);
-  console.log(`[Payment Form] Order: ${wsbOrderNum}, Amount: ${wsbTotal}, Currency: ${wsbCurrencyId}`);
-  console.log(`[Payment Form] WebPay URL: ${WEBPAY_API_URL}`);
-  console.log(`[Payment Form] Signature: ${wsbSignature.substring(0, 20)}...`);
-
-  const formFields = Object.entries(webpayParams)
-    .map(([key, value]) => {
-      if (key === "*scart") {
-        return `<input type="hidden" name="*scart">`;
-      }
-      const escapedValue = String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-      return `<input type="hidden" name="${key}" value="${escapedValue}">`;
-    })
-    .join("");
-
-  const html = `
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Redirecting to Payment</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      margin-top: 50px;
-    }
-    .loading {
-      font-size: 18px;
-      color: #2563EB;
-    }
-  </style>
-</head>
-<body>
-  <div class="loading">Redirecting to payment page...</div>
-  <form id="webpayForm" method="POST" action="${WEBPAY_API_URL.endsWith('/') ? WEBPAY_API_URL : WEBPAY_API_URL + '/'}">
-    ${formFields}
-  </form>
-  <script>
-    (function() {
-      function log(message, data) {
-        console.log("[PaymentForm] " + message, data || "");
-      }
-      
-      function submitForm() {
-        var form = document.getElementById("webpayForm");
-        if (form) {
-          log("Submitting form to: " + form.action);
-          try {
-            form.submit();
-            log("Form submitted successfully");
-          } catch (e) {
-            log("Form submit error: " + e.message, e);
-            setTimeout(submitForm, 100);
-          }
-        } else {
-          log("Form not found, retrying...");
-          setTimeout(submitForm, 100);
-        }
-      }
-      
-      if (document.readyState === "loading") {
-        log("Document loading, waiting for DOMContentLoaded");
-        document.addEventListener("DOMContentLoaded", function() {
-          log("DOMContentLoaded fired");
-          setTimeout(submitForm, 100);
-        });
-      } else {
-        log("Document already loaded");
-        setTimeout(submitForm, 100);
-      }
-    })();
   </script>
 </body>
 </html>
