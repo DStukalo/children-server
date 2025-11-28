@@ -59,6 +59,9 @@ export async function createPayment(req: Request, res: Response) {
       wsb_test: wsbTest,
       wsb_order_num: wsbOrderNum,
       wsb_currency_id: wsbCurrencyId,
+      wsb_invoice_item_name: [description.substring(0, 255)],
+      wsb_invoice_item_quantity: [1],
+      wsb_invoice_item_price: [wsbTotal],
       wsb_total: wsbTotal,
       wsb_return_url: wsbReturnUrl,
       wsb_cancel_return_url: wsbCancelReturnUrl,
@@ -121,6 +124,20 @@ export async function createPayment(req: Request, res: Response) {
 
     if (!redirectUrl) {
       console.error("[Payment API] No redirect URL in response");
+      console.error("[Payment API] Full response:", {
+        status: webpayResponse.status,
+        statusText: webpayResponse.statusText,
+        data: webpayResponse.data,
+        headers: webpayResponse.headers
+      });
+      
+      if (webpayResponse.status >= 400) {
+        return res.status(500).json({ 
+          message: `WebPay API error: ${webpayResponse.status} ${webpayResponse.statusText}`,
+          details: webpayResponse.data || "No error details provided"
+        });
+      }
+      
       return res.status(500).json({ 
         message: "Failed to get payment URL from WebPay",
         status: webpayResponse.status,
