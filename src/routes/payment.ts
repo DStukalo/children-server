@@ -45,7 +45,7 @@ export async function createPayment(req: Request, res: Response) {
     const wsbOrderNum = orderId;
     const wsbCurrencyId = currency === "BYN" ? "933" : "840";
     const wsbTotal = amount.toFixed(2);
-    const wsbTest = process.env.NODE_ENV === "production" ? "0" : "1";
+    const wsbTest = WEBPAY_API_URL.includes("sandbox") ? "1" : "0";
     const wsbReturnUrl = `${baseUrl}/api/payment/success?paymentId=${paymentId}`;
     const wsbCancelReturnUrl = `${baseUrl}/api/payment/cancel?paymentId=${paymentId}`;
     const wsbNotifyUrl = `${baseUrl}/api/payment/callback`;
