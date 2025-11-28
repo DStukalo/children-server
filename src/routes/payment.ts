@@ -19,20 +19,7 @@ const payments = new Map<string, {
 
 function generateWebPaySignature(params: Record<string, any>, secretKey: string): string {
   const sortedKeys = Object.keys(params).filter(key => key !== "wsb_signature").sort();
-  const signatureParts: string[] = [];
-  
-  for (const key of sortedKeys) {
-    const value = params[key];
-    if (Array.isArray(value)) {
-      for (let i = 0; i < value.length; i++) {
-        signatureParts.push(`${key}[${i}]=${value[i]}`);
-      }
-    } else {
-      signatureParts.push(`${key}=${value}`);
-    }
-  }
-  
-  const signatureString = signatureParts.join("&") + secretKey;
+  const signatureString = sortedKeys.map(key => `${key}=${params[key]}`).join("&") + secretKey;
   return crypto.createHash("sha1").update(signatureString).digest("hex").toUpperCase();
 }
 
@@ -65,10 +52,6 @@ export async function createPayment(req: Request, res: Response) {
     const wsbCancelReturnUrl = `${baseUrl}/api/payment/cancel?paymentId=${paymentId}`;
     const wsbNotifyUrl = `${baseUrl}/api/payment/callback`;
 
-    const itemName = description.substring(0, 255);
-    const itemQuantity = 1;
-    const itemPrice = wsbTotal;
-
     const webpayParams: Record<string, any> = {
       wsb_version: 2,
       wsb_storeid: WEBPAY_STORE_ID,
@@ -76,9 +59,6 @@ export async function createPayment(req: Request, res: Response) {
       wsb_test: wsbTest,
       wsb_order_num: wsbOrderNum,
       wsb_currency_id: wsbCurrencyId,
-      wsb_invoice_item_name: [itemName],
-      wsb_invoice_item_quantity: [itemQuantity],
-      wsb_invoice_item_price: [itemPrice],
       wsb_total: wsbTotal,
       wsb_return_url: wsbReturnUrl,
       wsb_cancel_return_url: wsbCancelReturnUrl,
@@ -110,9 +90,11 @@ export async function createPayment(req: Request, res: Response) {
     const webpayResponse = await axios.post(WEBPAY_API_ENDPOINT, webpayParams, {
       headers: {
         "Content-Type": "application/json",
+        "Accept": "application/json",
       },
       maxRedirects: 0,
       validateStatus: () => true,
+      timeout: 30000,
     });
 
     console.log(`[Payment API] WebPay response status: ${webpayResponse.status}`);
