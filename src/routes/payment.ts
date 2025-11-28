@@ -35,7 +35,7 @@ function generateWebPaySignature(params: Record<string, any>, secretKey: string)
     }
   }
   
-  const signatureString = signatureParts.join("&") + secretKey;
+  const signatureString = signatureParts.join("&") + "&" + secretKey;
   console.log(`[Signature] Full string: ${signatureString}`);
   return crypto.createHash("sha1").update(signatureString).digest("hex").toUpperCase();
 }
