@@ -27,16 +27,16 @@ function generateWebPaySignature(params: Record<string, any>, secretKey: string)
     "wsb_total"
   ];
   
-  const signatureParts: string[] = [];
+  const signatureValues: string[] = [];
   
   for (const key of signatureOrder) {
     if (params[key] !== undefined && params[key] !== null) {
-      signatureParts.push(`${key}=${params[key]}`);
+      signatureValues.push(String(params[key]));
     }
   }
   
-  const signatureString = signatureParts.join("&") + "&" + secretKey;
-  console.log(`[Signature] Full string: ${signatureString}`);
+  const signatureString = signatureValues.join("&") + secretKey;
+  console.log(`[Signature] Full string (values only): ${signatureString}`);
   return crypto.createHash("sha1").update(signatureString).digest("hex").toUpperCase();
 }
 
