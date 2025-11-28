@@ -17,26 +17,9 @@ const payments = new Map<string, {
   createdAt: Date;
 }>();
 
-function generateWebPaySignature(params: Record<string, any>, secretKey: string): string {
-  const signatureOrder = [
-    "wsb_seed",
-    "wsb_storeid",
-    "wsb_order_num",
-    "wsb_test",
-    "wsb_currency_id",
-    "wsb_total"
-  ];
-  
-  const signatureValues: string[] = [];
-  
-  for (const key of signatureOrder) {
-    if (params[key] !== undefined && params[key] !== null) {
-      signatureValues.push(String(params[key]));
-    }
-  }
-  
-  const signatureString = signatureValues.join("&") + secretKey;
-  console.log(`[Signature] Full string (values only): ${signatureString}`);
+function generateWebPaySignature(wsbSeed: string, wsbStoreId: string, wsbOrderNum: string, wsbTest: number, wsbCurrencyId: string, wsbTotal: string, secretKey: string): string {
+  const signatureString = `${wsbSeed}&${wsbStoreId}&${wsbOrderNum}&${wsbTest}&${wsbCurrencyId}&${wsbTotal}${secretKey}`;
+  console.log(`[Signature] Full string: ${signatureString}`);
   return crypto.createHash("sha1").update(signatureString).digest("hex").toUpperCase();
 }
 
@@ -63,7 +46,7 @@ export async function createPayment(req: Request, res: Response) {
     const wsbSeed = Date.now().toString();
     const wsbOrderNum = orderId;
     const wsbCurrencyId = currency;
-    const wsbTotal = amount % 1 === 0 ? amount : parseFloat(amount.toFixed(2));
+    const wsbTotalString = amount % 1 === 0 ? `${Number(amount)}` : amount.toFixed(2);
     const wsbTest = WEBPAY_API_URL.includes("sandbox") ? 1 : 0;
     const wsbReturnUrl = `${baseUrl}/api/payment/success?paymentId=${paymentId}`;
     const wsbCancelReturnUrl = `${baseUrl}/api/payment/cancel?paymentId=${paymentId}`;
@@ -71,7 +54,7 @@ export async function createPayment(req: Request, res: Response) {
 
     const itemName = description.substring(0, 255);
     const itemQuantity = 1;
-    const itemPrice = wsbTotal;
+    const itemPrice = amount % 1 === 0 ? Number(amount) : parseFloat(amount.toFixed(2));
 
     const webpayParams: Record<string, any> = {
       wsb_version: 2,
@@ -82,17 +65,16 @@ export async function createPayment(req: Request, res: Response) {
       wsb_currency_id: wsbCurrencyId,
       wsb_invoice_item_name: [itemName],
       wsb_invoice_item_quantity: [itemQuantity],
-      wsb_invoice_item_price: [itemPrice],
-      wsb_total: wsbTotal,
+      wsb_invoice_item_price: [itemPrice.toFixed(2)],
+      wsb_total: wsbTotalString,
       wsb_return_url: wsbReturnUrl,
       wsb_cancel_return_url: wsbCancelReturnUrl,
       wsb_notify_url: wsbNotifyUrl,
       wsb_redirect: 1,
-      wsb_return_format: "json",
       wsb_language_id: "russian",
     };
 
-    const wsbSignature = generateWebPaySignature(webpayParams, WEBPAY_SECRET_KEY);
+    const wsbSignature = generateWebPaySignature(wsbSeed, WEBPAY_STORE_ID, wsbOrderNum, wsbTest, wsbCurrencyId, wsbTotalString, WEBPAY_SECRET_KEY);
     webpayParams.wsb_signature = wsbSignature;
 
     console.log(`[Payment API] Creating payment: ${paymentId}, Order: ${wsbOrderNum}, Amount: ${wsbTotal}`);
