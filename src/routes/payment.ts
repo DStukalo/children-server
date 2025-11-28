@@ -240,6 +240,7 @@ export function createPaymentForm(req: Request, res: Response) {
   
   const payment = payments.get(paymentId);
   if (!payment) {
+    console.error(`[Payment Form] Payment not found: ${paymentId}`);
     return res.status(404).send("Payment not found");
   }
 
@@ -269,6 +270,11 @@ export function createPaymentForm(req: Request, res: Response) {
 
   const wsbSignature = generateWebPaySignature(webpayParams, WEBPAY_SECRET_KEY);
   webpayParams.wsb_signature = wsbSignature;
+
+  console.log(`[Payment Form] Generating form for paymentId: ${paymentId}`);
+  console.log(`[Payment Form] Order: ${wsbOrderNum}, Amount: ${wsbTotal}, Currency: ${wsbCurrencyId}`);
+  console.log(`[Payment Form] WebPay URL: ${WEBPAY_API_URL}`);
+  console.log(`[Payment Form] Signature: ${wsbSignature.substring(0, 20)}...`);
 
   const formFields = Object.entries(webpayParams)
     .map(([key, value]) => {
@@ -305,14 +311,39 @@ export function createPaymentForm(req: Request, res: Response) {
     ${formFields}
   </form>
   <script>
-    window.onload = function() {
-      setTimeout(function() {
+    (function() {
+      function log(message, data) {
+        console.log("[PaymentForm] " + message, data || "");
+      }
+      
+      function submitForm() {
         var form = document.getElementById("webpayForm");
         if (form) {
-          form.submit();
+          log("Submitting form to: " + form.action);
+          try {
+            form.submit();
+            log("Form submitted successfully");
+          } catch (e) {
+            log("Form submit error: " + e.message, e);
+            setTimeout(submitForm, 100);
+          }
+        } else {
+          log("Form not found, retrying...");
+          setTimeout(submitForm, 100);
         }
-      }, 50);
-    };
+      }
+      
+      if (document.readyState === "loading") {
+        log("Document loading, waiting for DOMContentLoaded");
+        document.addEventListener("DOMContentLoaded", function() {
+          log("DOMContentLoaded fired");
+          setTimeout(submitForm, 100);
+        });
+      } else {
+        log("Document already loaded");
+        setTimeout(submitForm, 100);
+      }
+    })();
   </script>
 </body>
 </html>
