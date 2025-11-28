@@ -18,22 +18,25 @@ const payments = new Map<string, {
 }>();
 
 function generateWebPaySignature(params: Record<string, any>, secretKey: string): string {
-  const sortedKeys = Object.keys(params).filter(key => key !== "wsb_signature").sort();
+  const signatureOrder = [
+    "wsb_seed",
+    "wsb_storeid",
+    "wsb_order_num",
+    "wsb_test",
+    "wsb_currency_id",
+    "wsb_total"
+  ];
+  
   const signatureParts: string[] = [];
   
-  for (const key of sortedKeys) {
-    const value = params[key];
-    if (Array.isArray(value)) {
-      for (let i = 0; i < value.length; i++) {
-        signatureParts.push(`${key}[${i}]=${value[i]}`);
-      }
-    } else {
-      signatureParts.push(`${key}=${value}`);
+  for (const key of signatureOrder) {
+    if (params[key] !== undefined && params[key] !== null) {
+      signatureParts.push(`${key}=${params[key]}`);
     }
   }
   
   const signatureString = signatureParts.join("&") + secretKey;
-  console.log(`[Signature] String: ${signatureString.substring(0, 200)}...`);
+  console.log(`[Signature] Full string: ${signatureString}`);
   return crypto.createHash("sha1").update(signatureString).digest("hex").toUpperCase();
 }
 
@@ -60,7 +63,7 @@ export async function createPayment(req: Request, res: Response) {
     const wsbSeed = Date.now().toString();
     const wsbOrderNum = orderId;
     const wsbCurrencyId = currency;
-    const wsbTotal = parseFloat(amount.toFixed(2));
+    const wsbTotal = amount % 1 === 0 ? amount : parseFloat(amount.toFixed(2));
     const wsbTest = WEBPAY_API_URL.includes("sandbox") ? 1 : 0;
     const wsbReturnUrl = `${baseUrl}/api/payment/success?paymentId=${paymentId}`;
     const wsbCancelReturnUrl = `${baseUrl}/api/payment/cancel?paymentId=${paymentId}`;
