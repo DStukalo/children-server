@@ -16,6 +16,6 @@ services:
       - key: WEBPAY_SECRET_KEY
         sync: false
       - key: WEBPAY_API_URL
-        value: https://sandbox.webpay.by
+        value: https://securesandbox.webpay.by
       - key: PRODUCTION_URL
         sync: false

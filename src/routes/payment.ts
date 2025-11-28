@@ -3,7 +3,7 @@ import crypto from "crypto";
 
 const WEBPAY_STORE_ID = process.env.WEBPAY_STORE_ID || "";
 const WEBPAY_SECRET_KEY = process.env.WEBPAY_SECRET_KEY || "";
-const WEBPAY_API_URL = process.env.WEBPAY_API_URL || "https://sandbox.webpay.by";
+const WEBPAY_API_URL = process.env.WEBPAY_API_URL || "https://securesandbox.webpay.by";
 
 const payments = new Map<string, {
   paymentId: string;
@@ -18,7 +18,7 @@ const payments = new Map<string, {
 function generateWebPaySignature(params: Record<string, string | number>, secretKey: string): string {
   const sortedKeys = Object.keys(params).sort();
   const signatureString = sortedKeys.map(key => `${key}=${params[key]}`).join("&") + secretKey;
-  return crypto.createHash("md5").update(signatureString).digest("hex").toUpperCase();
+  return crypto.createHash("sha1").update(signatureString).digest("hex").toUpperCase();
 }
 
 export async function createPayment(req: Request, res: Response) {
@@ -43,25 +43,26 @@ export async function createPayment(req: Request, res: Response) {
     
     const wsbSeed = crypto.randomBytes(16).toString("hex");
     const wsbOrderNum = orderId;
-    const wsbCurrencyId = currency === "BYN" ? "933" : "840";
+    const wsbCurrencyId = currency;
     const wsbTotal = amount.toFixed(2);
     const wsbTest = WEBPAY_API_URL.includes("sandbox") ? "1" : "0";
     const wsbReturnUrl = `${baseUrl}/api/payment/success?paymentId=${paymentId}`;
     const wsbCancelReturnUrl = `${baseUrl}/api/payment/cancel?paymentId=${paymentId}`;
     const wsbNotifyUrl = `${baseUrl}/api/payment/callback`;
 
-    const webpayParams: Record<string, string | number> = {
-      wsb_storeid: WEBPAY_STORE_ID,
-      wsb_seed: wsbSeed,
-      wsb_test: wsbTest,
-      wsb_order_num: wsbOrderNum,
-      wsb_currency_id: wsbCurrencyId,
-      wsb_total: wsbTotal,
-      wsb_description: description,
-      wsb_return_url: wsbReturnUrl,
-      wsb_cancel_return_url: wsbCancelReturnUrl,
-      wsb_notify_url: wsbNotifyUrl,
-    };
+  const webpayParams: Record<string, string | number> = {
+    "*scart": "",
+    wsb_version: "2",
+    wsb_storeid: WEBPAY_STORE_ID,
+    wsb_seed: wsbSeed,
+    wsb_test: wsbTest,
+    wsb_order_num: wsbOrderNum,
+    wsb_currency_id: wsbCurrencyId,
+    wsb_total: wsbTotal,
+    wsb_return_url: wsbReturnUrl,
+    wsb_cancel_return_url: wsbCancelReturnUrl,
+    wsb_notify_url: wsbNotifyUrl,
+  };
 
     const wsbSignature = generateWebPaySignature(webpayParams, WEBPAY_SECRET_KEY);
     webpayParams.wsb_signature = wsbSignature;
@@ -244,7 +245,7 @@ export function createPaymentForm(req: Request, res: Response) {
 
   const wsbSeed = crypto.randomBytes(16).toString("hex");
   const wsbOrderNum = payment.orderId;
-  const wsbCurrencyId = "933";
+  const wsbCurrencyId = "BYN";
   const wsbTotal = payment.amount.toFixed(2);
   const wsbTest = WEBPAY_API_URL.includes("sandbox") ? "1" : "0";
   const baseUrl = process.env.PRODUCTION_URL || (req.protocol + "://" + req.get("host"));
@@ -253,13 +254,14 @@ export function createPaymentForm(req: Request, res: Response) {
   const wsbNotifyUrl = `${baseUrl}/api/payment/callback`;
 
   const webpayParams: Record<string, string | number> = {
+    "*scart": "",
+    wsb_version: "2",
     wsb_storeid: WEBPAY_STORE_ID,
     wsb_seed: wsbSeed,
     wsb_test: wsbTest,
     wsb_order_num: wsbOrderNum,
     wsb_currency_id: wsbCurrencyId,
     wsb_total: wsbTotal,
-    wsb_description: `Payment for order ${wsbOrderNum}`.substring(0, 255),
     wsb_return_url: wsbReturnUrl,
     wsb_cancel_return_url: wsbCancelReturnUrl,
     wsb_notify_url: wsbNotifyUrl,
@@ -268,13 +270,23 @@ export function createPaymentForm(req: Request, res: Response) {
   const wsbSignature = generateWebPaySignature(webpayParams, WEBPAY_SECRET_KEY);
   webpayParams.wsb_signature = wsbSignature;
 
+  const formFields = Object.entries(webpayParams)
+    .map(([key, value]) => {
+      if (key === "*scart") {
+        return `<input type="hidden" name="*scart">`;
+      }
+      const escapedValue = String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+      return `<input type="hidden" name="${key}" value="${escapedValue}">`;
+    })
+    .join("");
+
   const html = `
 <!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Перенаправление на оплату</title>
+  <title>Redirecting to Payment</title>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -288,14 +300,19 @@ export function createPaymentForm(req: Request, res: Response) {
   </style>
 </head>
 <body>
-  <div class="loading">Перенаправление на страницу оплаты...</div>
-  <form id="webpayForm" method="POST" action="${WEBPAY_API_URL}/payment">
-    ${Object.entries(webpayParams).map(([key, value]) => 
-      `<input type="hidden" name="${key}" value="${value}">`
-    ).join("")}
+  <div class="loading">Redirecting to payment page...</div>
+  <form id="webpayForm" method="POST" action="${WEBPAY_API_URL.endsWith('/') ? WEBPAY_API_URL : WEBPAY_API_URL + '/'}">
+    ${formFields}
   </form>
   <script>
-    document.getElementById("webpayForm").submit();
+    window.onload = function() {
+      setTimeout(function() {
+        var form = document.getElementById("webpayForm");
+        if (form) {
+          form.submit();
+        }
+      }, 50);
+    };
   </script>
 </body>
 </html>
