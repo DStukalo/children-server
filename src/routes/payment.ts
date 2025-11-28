@@ -19,7 +19,21 @@ const payments = new Map<string, {
 
 function generateWebPaySignature(params: Record<string, any>, secretKey: string): string {
   const sortedKeys = Object.keys(params).filter(key => key !== "wsb_signature").sort();
-  const signatureString = sortedKeys.map(key => `${key}=${params[key]}`).join("&") + secretKey;
+  const signatureParts: string[] = [];
+  
+  for (const key of sortedKeys) {
+    const value = params[key];
+    if (Array.isArray(value)) {
+      for (let i = 0; i < value.length; i++) {
+        signatureParts.push(`${key}[${i}]=${value[i]}`);
+      }
+    } else {
+      signatureParts.push(`${key}=${value}`);
+    }
+  }
+  
+  const signatureString = signatureParts.join("&") + secretKey;
+  console.log(`[Signature] String: ${signatureString.substring(0, 200)}...`);
   return crypto.createHash("sha1").update(signatureString).digest("hex").toUpperCase();
 }
 
@@ -46,24 +60,31 @@ export async function createPayment(req: Request, res: Response) {
     const wsbSeed = Date.now().toString();
     const wsbOrderNum = orderId;
     const wsbCurrencyId = currency;
-    const wsbTotal = amount.toFixed(2);
+    const wsbTotal = parseFloat(amount.toFixed(2));
     const wsbTest = WEBPAY_API_URL.includes("sandbox") ? 1 : 0;
     const wsbReturnUrl = `${baseUrl}/api/payment/success?paymentId=${paymentId}`;
     const wsbCancelReturnUrl = `${baseUrl}/api/payment/cancel?paymentId=${paymentId}`;
     const wsbNotifyUrl = `${baseUrl}/api/payment/callback`;
 
+    const itemName = description.substring(0, 255);
+    const itemQuantity = 1;
+    const itemPrice = wsbTotal;
+
     const webpayParams: Record<string, any> = {
-      wsb_version: "2",
+      wsb_version: 2,
       wsb_storeid: WEBPAY_STORE_ID,
       wsb_seed: wsbSeed,
-      wsb_test: String(wsbTest),
+      wsb_test: wsbTest,
       wsb_order_num: wsbOrderNum,
       wsb_currency_id: wsbCurrencyId,
+      wsb_invoice_item_name: [itemName],
+      wsb_invoice_item_quantity: [itemQuantity],
+      wsb_invoice_item_price: [itemPrice],
       wsb_total: wsbTotal,
       wsb_return_url: wsbReturnUrl,
       wsb_cancel_return_url: wsbCancelReturnUrl,
       wsb_notify_url: wsbNotifyUrl,
-      wsb_redirect: "1",
+      wsb_redirect: 1,
       wsb_return_format: "json",
       wsb_language_id: "russian",
     };
