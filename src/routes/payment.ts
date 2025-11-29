@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import crypto from "crypto";
 import axios from "axios";
+import FormData from "form-data";
 
 const WEBPAY_STORE_ID = process.env.WEBPAY_STORE_ID || "";
 const WEBPAY_SECRET_KEY = process.env.WEBPAY_SECRET_KEY || "";
@@ -128,48 +129,22 @@ export async function createPayment(req: Request, res: Response) {
       createdAt: new Date(),
     });
 
-    const formData = new URLSearchParams();
+    const form = new FormData();
     
-    formData.append("wsb_version", String(webpayParams.wsb_version));
-    formData.append("wsb_storeid", String(webpayParams.wsb_storeid));
-    formData.append("wsb_seed", String(webpayParams.wsb_seed));
-    formData.append("wsb_test", String(webpayParams.wsb_test));
-    formData.append("wsb_order_num", String(webpayParams.wsb_order_num));
-    formData.append("wsb_currency_id", String(webpayParams.wsb_currency_id));
+    Object.entries(webpayParams).forEach(([key, value]) => {
+      if (Array.isArray(value)) {
+        value.forEach((v: any) => form.append(key, String(v)));
+      } else {
+        form.append(key, String(value));
+      }
+    });
     
-    if (Array.isArray(webpayParams.wsb_invoice_item_name)) {
-      webpayParams.wsb_invoice_item_name.forEach((name: string) => {
-        formData.append("wsb_invoice_item_name[]", name);
-      });
-    }
-    
-    if (Array.isArray(webpayParams.wsb_invoice_item_quantity)) {
-      webpayParams.wsb_invoice_item_quantity.forEach((qty: number) => {
-        formData.append("wsb_invoice_item_quantity[]", String(qty));
-      });
-    }
-    
-    if (Array.isArray(webpayParams.wsb_invoice_item_price)) {
-      webpayParams.wsb_invoice_item_price.forEach((price: string) => {
-        formData.append("wsb_invoice_item_price[]", String(price));
-      });
-    }
-    
-    formData.append("wsb_total", String(webpayParams.wsb_total));
-    formData.append("wsb_return_url", String(webpayParams.wsb_return_url));
-    formData.append("wsb_cancel_return_url", String(webpayParams.wsb_cancel_return_url));
-    formData.append("wsb_notify_url", String(webpayParams.wsb_notify_url));
-    formData.append("wsb_redirect", String(webpayParams.wsb_redirect));
-    formData.append("wsb_language_id", String(webpayParams.wsb_language_id));
-    formData.append("wsb_signature", String(webpayParams.wsb_signature));
-    
-    const bodyForm = formData.toString();
-    console.log(`[Payment API] Body (form-urlencoded): ${bodyForm}`);
     console.log(`[Payment API] Request params (object):`, JSON.stringify(webpayParams, null, 2));
+    console.log(`[Payment API] FormData headers:`, form.getHeaders());
 
-    const webpayResponse = await axios.post(WEBPAY_API_ENDPOINT, bodyForm, {
+    const webpayResponse = await axios.post(WEBPAY_API_ENDPOINT, form, {
       headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
+        ...form.getHeaders(),
         "Accept": "application/json",
       },
       maxRedirects: 0,
