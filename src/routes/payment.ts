@@ -111,6 +111,8 @@ export async function createPayment(req: Request, res: Response) {
       wsb_language_id: "russian",
     };
 
+    generateSignatureCandidates(wsbSeed, WEBPAY_STORE_ID, wsbOrderNum, wsbTest, wsbCurrencyId, wsbTotalString, WEBPAY_SECRET_KEY);
+    
     const wsbSignature = generateWebPaySignature(wsbSeed, WEBPAY_STORE_ID, wsbOrderNum, wsbTest, wsbCurrencyId, wsbTotalString, WEBPAY_SECRET_KEY);
     webpayParams.wsb_signature = wsbSignature;
 
@@ -127,12 +129,13 @@ export async function createPayment(req: Request, res: Response) {
       createdAt: new Date(),
     });
 
-    console.log(`[Payment API] Sending request to WebPay API: ${WEBPAY_API_ENDPOINT}`);
-    console.log(`[Payment API] Request params:`, JSON.stringify(webpayParams, null, 2));
+    const bodyForm = qs.stringify(webpayParams);
+    console.log(`[Payment API] Body (form-urlencoded): ${bodyForm}`);
+    console.log(`[Payment API] Request params (object):`, JSON.stringify(webpayParams, null, 2));
 
-    const webpayResponse = await axios.post(WEBPAY_API_ENDPOINT, webpayParams, {
+    const webpayResponse = await axios.post(WEBPAY_API_ENDPOINT, bodyForm, {
       headers: {
-        "Content-Type": "application/json",
+        "Content-Type": "application/x-www-form-urlencoded",
         "Accept": "application/json",
       },
       maxRedirects: 0,
