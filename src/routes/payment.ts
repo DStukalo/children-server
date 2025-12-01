@@ -25,8 +25,8 @@ function sha1hex(s: string): string {
   return crypto.createHash("sha1").update(s).digest("hex");
 }
 
-function generateSignatureCandidates(wsbSeed: string, wsbStoreId: string, wsbOrderNum: string, wsbTest: number | string, wsbCurrencyId: string, wsbTotal: string, secretKey: string) {
-  const parts = [wsbSeed, wsbStoreId, wsbOrderNum, String(wsbTest), wsbCurrencyId, wsbTotal];
+function generateSignatureCandidates(wsbSeed: string, wsbStoreId: number, wsbOrderNum: string, wsbTest: number, wsbCurrencyId: string, wsbTotal: string, secretKey: string) {
+  const parts = [wsbSeed, String(wsbStoreId), wsbOrderNum, String(wsbTest), wsbCurrencyId, wsbTotal];
   
   const a = parts.join("") + secretKey;
   const b = parts.join("&") + secretKey;
@@ -52,10 +52,10 @@ function generateSignatureCandidates(wsbSeed: string, wsbStoreId: string, wsbOrd
   return candidates;
 }
 
-function generateWebPaySignature(wsbSeed: string, wsbStoreId: string, wsbOrderNum: string, wsbTest: number, wsbCurrencyId: string, wsbTotal: string, secretKey: string): string {
-  const parts = [wsbSeed, wsbStoreId, wsbOrderNum, String(wsbTest), wsbCurrencyId, wsbTotal];
-  const signatureString = parts.join("&") + secretKey;
-  console.log(`[Signature] Using variant B (& separators): ${signatureString}`);
+function generateWebPaySignature(wsbSeed: string, wsbStoreId: number, wsbOrderNum: string, wsbTest: number, wsbCurrencyId: string, wsbTotal: string, secretKey: string): string {
+  const parts = [wsbSeed, String(wsbStoreId), wsbOrderNum, String(wsbTest), wsbCurrencyId, wsbTotal];
+  const signatureString = parts.join("") + secretKey;
+  console.log(`[Signature] Using variant A (no separators): ${signatureString}`);
   return sha1hex(signatureString).toUpperCase();
 }
 
@@ -83,6 +83,8 @@ export async function createPayment(req: Request, res: Response) {
     const wsbOrderNum = orderId;
     const wsbCurrencyId = currency;
     const wsbTotalString = normalizeAmount(amount);
+    const wsbTotalNumber = parseFloat(wsbTotalString);
+    const wsbStoreIdNumber = Number(WEBPAY_STORE_ID);
     const wsbTest = WEBPAY_API_URL.includes("sandbox") ? 1 : 0;
     const wsbReturnUrl = `${baseUrl}/api/payment/success?paymentId=${paymentId}`;
     const wsbCancelReturnUrl = `${baseUrl}/api/payment/cancel?paymentId=${paymentId}`;
@@ -90,19 +92,19 @@ export async function createPayment(req: Request, res: Response) {
 
     const itemName = description.substring(0, 255);
     const itemQuantity = 1;
-    const itemPriceString = normalizeAmount(amount);
+    const itemPriceNumber = parseFloat(normalizeAmount(amount));
 
     const webpayParams: Record<string, any> = {
       wsb_version: 2,
-      wsb_storeid: WEBPAY_STORE_ID,
+      wsb_storeid: wsbStoreIdNumber,
       wsb_seed: wsbSeed,
       wsb_test: wsbTest,
       wsb_order_num: wsbOrderNum,
       wsb_currency_id: wsbCurrencyId,
       wsb_invoice_item_name: [itemName],
       wsb_invoice_item_quantity: [itemQuantity],
-      wsb_invoice_item_price: [itemPriceString],
-      wsb_total: wsbTotalString,
+      wsb_invoice_item_price: [itemPriceNumber],
+      wsb_total: wsbTotalNumber,
       wsb_return_url: wsbReturnUrl,
       wsb_cancel_return_url: wsbCancelReturnUrl,
       wsb_notify_url: wsbNotifyUrl,
@@ -110,9 +112,9 @@ export async function createPayment(req: Request, res: Response) {
       wsb_language_id: "russian",
     };
 
-    generateSignatureCandidates(wsbSeed, WEBPAY_STORE_ID, wsbOrderNum, wsbTest, wsbCurrencyId, wsbTotalString, WEBPAY_SECRET_KEY);
+    generateSignatureCandidates(wsbSeed, wsbStoreIdNumber, wsbOrderNum, wsbTest, wsbCurrencyId, wsbTotalString, WEBPAY_SECRET_KEY);
     
-    const wsbSignature = generateWebPaySignature(wsbSeed, WEBPAY_STORE_ID, wsbOrderNum, wsbTest, wsbCurrencyId, wsbTotalString, WEBPAY_SECRET_KEY);
+    const wsbSignature = generateWebPaySignature(wsbSeed, wsbStoreIdNumber, wsbOrderNum, wsbTest, wsbCurrencyId, wsbTotalString, WEBPAY_SECRET_KEY);
     webpayParams.wsb_signature = wsbSignature;
 
     console.log(`[Payment API] Creating payment: ${paymentId}, Order: ${wsbOrderNum}, Amount: ${wsbTotalString}`);
