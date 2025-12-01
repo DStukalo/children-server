@@ -18,7 +18,7 @@ const payments = new Map<string, {
 }>();
 
 function normalizeAmount(val: number): string {
-  return (val % 1 === 0) ? String(Number(val)) : val.toFixed(2);
+  return val.toFixed(2);
 }
 
 function sha1hex(s: string): string {
