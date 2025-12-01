@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import crypto from "crypto";
 import axios from "axios";
-import FormData from "form-data";
 
 const WEBPAY_STORE_ID = process.env.WEBPAY_STORE_ID || "";
 const WEBPAY_SECRET_KEY = process.env.WEBPAY_SECRET_KEY || "";
@@ -129,22 +128,11 @@ export async function createPayment(req: Request, res: Response) {
       createdAt: new Date(),
     });
 
-    const form = new FormData();
-    
-    Object.entries(webpayParams).forEach(([key, value]) => {
-      if (Array.isArray(value)) {
-        value.forEach((v: any) => form.append(key, String(v)));
-      } else {
-        form.append(key, String(value));
-      }
-    });
-    
-    console.log(`[Payment API] Request params (object):`, JSON.stringify(webpayParams, null, 2));
-    console.log(`[Payment API] FormData headers:`, form.getHeaders());
+    console.log(`[Payment API] Request payload:`, JSON.stringify(webpayParams, null, 2));
 
-    const webpayResponse = await axios.post(WEBPAY_API_ENDPOINT, form, {
+    const webpayResponse = await axios.post(WEBPAY_API_ENDPOINT, webpayParams, {
       headers: {
-        ...form.getHeaders(),
+        "Content-Type": "application/json",
         "Accept": "application/json",
       },
       maxRedirects: 0,
