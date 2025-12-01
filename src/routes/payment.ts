@@ -54,8 +54,8 @@ function generateSignatureCandidates(wsbSeed: string, wsbStoreId: string, wsbOrd
 
 function generateWebPaySignature(wsbSeed: string, wsbStoreId: string, wsbOrderNum: string, wsbTest: number, wsbCurrencyId: string, wsbTotal: string, secretKey: string): string {
   const parts = [wsbSeed, wsbStoreId, wsbOrderNum, String(wsbTest), wsbCurrencyId, wsbTotal];
-  const signatureString = parts.join("") + secretKey;
-  console.log(`[Signature] Using variant A (no separators): ${signatureString}`);
+  const signatureString = parts.join("&") + secretKey;
+  console.log(`[Signature] Using variant B (& separators): ${signatureString}`);
   return sha1hex(signatureString).toUpperCase();
 }
 
