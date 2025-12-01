@@ -18,6 +18,9 @@ const payments = new Map<string, {
 }>();
 
 function normalizeAmount(val: number): string {
+  if (val % 1 === 0) {
+    return String(Math.round(val));
+  }
   return val.toFixed(2);
 }
 
