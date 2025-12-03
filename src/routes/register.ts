@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { User } from "../types";
 import { findUserByEmail, insertUser } from "../models/user";
 import { serializeUser } from "./serialize-user";
+import { sessions } from "../store";
 
 export async function register(req: Request, res: Response) {
 	const { email, password } = req.body;
@@ -35,6 +36,7 @@ export async function register(req: Request, res: Response) {
 		await insertUser(user);
 
 		const token = crypto.randomUUID();
+		sessions[token] = user.id;
 
 		res.json({
 			message: "Registered",
