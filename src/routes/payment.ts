@@ -260,16 +260,58 @@ export async function handlePaymentSuccess(req: Request, res: Response) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Оплата успешна</title>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; background: #f0fdf4; }
-    .success { color: #10B981; font-size: 64px; }
-    h1 { color: #10B981; }
-    p { color: #374151; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+      text-align: center; 
+      padding: 40px 20px;
+      background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+      min-height: 100vh;
+      box-sizing: border-box;
+      margin: 0;
+    }
+    .container {
+      background: white;
+      border-radius: 20px;
+      padding: 40px 30px;
+      max-width: 400px;
+      margin: 0 auto;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    }
+    .success { font-size: 80px; margin-bottom: 20px; }
+    h1 { color: #10B981; margin: 0 0 15px; font-size: 28px; }
+    p { color: #6B7280; margin: 0 0 30px; font-size: 16px; line-height: 1.5; }
+    .btn {
+      display: inline-block;
+      background: #10B981;
+      color: white;
+      padding: 16px 40px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 16px;
+      border: none;
+      cursor: pointer;
+    }
+    .btn:active { background: #059669; }
+    .hint { color: #9CA3AF; font-size: 14px; margin-top: 20px; }
   </style>
 </head>
 <body>
-  <div class="success">✅</div>
-  <h1>Оплата успешна!</h1>
-  <p>Спасибо за покупку. Вы можете вернуться в приложение.</p>
+  <div class="container">
+    <div class="success">✅</div>
+    <h1>Оплата успешна!</h1>
+    <p>Спасибо за покупку! Ваш доступ активирован.</p>
+    <button class="btn" onclick="closeWindow()">Вернуться в приложение</button>
+    <p class="hint">Нажмите кнопку или закройте эту вкладку</p>
+  </div>
+  <script>
+    function closeWindow() {
+      if (window.close) {
+        window.close();
+      }
+      window.history.back();
+    }
+  </script>
 </body>
 </html>
   `;
@@ -296,16 +338,58 @@ export async function handlePaymentCancel(req: Request, res: Response) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Оплата отменена</title>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; background: #fef2f2; }
-    .fail { color: #EF4444; font-size: 64px; }
-    h1 { color: #EF4444; }
-    p { color: #374151; }
+    body { 
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+      text-align: center; 
+      padding: 40px 20px;
+      background: linear-gradient(135deg, #fef2f2 0%, #fecaca 100%);
+      min-height: 100vh;
+      box-sizing: border-box;
+      margin: 0;
+    }
+    .container {
+      background: white;
+      border-radius: 20px;
+      padding: 40px 30px;
+      max-width: 400px;
+      margin: 0 auto;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+    }
+    .fail { font-size: 80px; margin-bottom: 20px; }
+    h1 { color: #EF4444; margin: 0 0 15px; font-size: 28px; }
+    p { color: #6B7280; margin: 0 0 30px; font-size: 16px; line-height: 1.5; }
+    .btn {
+      display: inline-block;
+      background: #EF4444;
+      color: white;
+      padding: 16px 40px;
+      border-radius: 12px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 16px;
+      border: none;
+      cursor: pointer;
+    }
+    .btn:active { background: #DC2626; }
+    .hint { color: #9CA3AF; font-size: 14px; margin-top: 20px; }
   </style>
 </head>
 <body>
-  <div class="fail">❌</div>
-  <h1>Оплата отменена</h1>
-  <p>Платеж не был завершен. Вы можете вернуться в приложение и попробовать снова.</p>
+  <div class="container">
+    <div class="fail">❌</div>
+    <h1>Оплата отменена</h1>
+    <p>Платеж не был завершен. Вы можете вернуться в приложение и попробовать снова.</p>
+    <button class="btn" onclick="closeWindow()">Вернуться в приложение</button>
+    <p class="hint">Нажмите кнопку или закройте эту вкладку</p>
+  </div>
+  <script>
+    function closeWindow() {
+      if (window.close) {
+        window.close();
+      }
+      window.history.back();
+    }
+  </script>
 </body>
 </html>
   `;
