@@ -307,7 +307,7 @@ export async function handlePaymentSuccess(req: Request, res: Response) {
     <div class="success">✅</div>
     <h1>Оплата успешна!</h1>
     <p>Спасибо за покупку! Ваш доступ активирован.</p>
-    <a class="btn" href="childapp://payment-success?paymentId=${paymentId}" id="returnBtn">Вернуться в приложение</a>
+    <button class="btn" onclick="returnToApp()" id="returnBtn">Вернуться в приложение</button>
     <div class="hint-box">
       <p class="hint" style="margin:0">
         Если кнопка не работает, просто закройте это окно.<br>
@@ -318,21 +318,28 @@ export async function handlePaymentSuccess(req: Request, res: Response) {
   <script>
     var redirectAttempted = false;
     
-    // Try auto-redirect after 1.5s
+    function returnToApp() {
+      // First try to send message to React Native WebView
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'payment-success',
+          paymentId: '${paymentId}'
+        }));
+      }
+      
+      // Then try deep link as fallback
+      setTimeout(function() {
+        window.location.href = 'childapp://payment-success?paymentId=${paymentId}';
+      }, 100);
+    }
+    
+    // Try auto-redirect after 2s
     setTimeout(function() {
       if (!redirectAttempted) {
         redirectAttempted = true;
-        window.location.href = 'childapp://payment-success?paymentId=${paymentId}';
+        returnToApp();
       }
-    }, 1500);
-    
-    // Send message to WebView (for React Native)
-    if (window.ReactNativeWebView) {
-      window.ReactNativeWebView.postMessage(JSON.stringify({
-        type: 'payment-success',
-        paymentId: '${paymentId}'
-      }));
-    }
+    }, 2000);
   </script>
 </body>
 </html>
@@ -406,7 +413,7 @@ export async function handlePaymentCancel(req: Request, res: Response) {
     <div class="fail">❌</div>
     <h1>Оплата отменена</h1>
     <p>Платеж не был завершен. Вы можете вернуться в приложение и попробовать снова.</p>
-    <a class="btn" href="childapp://payment-cancel?paymentId=${paymentId}">Вернуться в приложение</a>
+    <button class="btn" onclick="returnToApp()">Вернуться в приложение</button>
     <div class="hint-box">
       <p class="hint" style="margin:0">
         Если кнопка не работает, просто закройте это окно.
@@ -416,19 +423,28 @@ export async function handlePaymentCancel(req: Request, res: Response) {
   <script>
     var redirectAttempted = false;
     
+    function returnToApp() {
+      // First try to send message to React Native WebView
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({
+          type: 'payment-failed',
+          paymentId: '${paymentId}'
+        }));
+      }
+      
+      // Then try deep link as fallback
+      setTimeout(function() {
+        window.location.href = 'childapp://payment-cancel?paymentId=${paymentId}';
+      }, 100);
+    }
+    
+    // Try auto-redirect after 2s
     setTimeout(function() {
       if (!redirectAttempted) {
         redirectAttempted = true;
-        window.location.href = 'childapp://payment-cancel?paymentId=${paymentId}';
+        returnToApp();
       }
-    }, 1500);
-    
-    if (window.ReactNativeWebView) {
-      window.ReactNativeWebView.postMessage(JSON.stringify({
-        type: 'payment-failed',
-        paymentId: '${paymentId}'
-      }));
-    }
+    }, 2000);
   </script>
 </body>
 </html>
