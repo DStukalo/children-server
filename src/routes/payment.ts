@@ -301,16 +301,13 @@ export async function handlePaymentSuccess(req: Request, res: Response) {
     <div class="success">✅</div>
     <h1>Оплата успешна!</h1>
     <p>Спасибо за покупку! Ваш доступ активирован.</p>
-    <button class="btn" onclick="closeWindow()">Вернуться в приложение</button>
-    <p class="hint">Нажмите кнопку или закройте эту вкладку</p>
+    <a class="btn" href="childapp://payment-success?paymentId=${paymentId}">Вернуться в приложение</a>
+    <p class="hint">Вы будете автоматически перенаправлены...</p>
   </div>
   <script>
-    function closeWindow() {
-      if (window.close) {
-        window.close();
-      }
-      window.history.back();
-    }
+    setTimeout(function() {
+      window.location.href = 'childapp://payment-success?paymentId=${paymentId}';
+    }, 1500);
   </script>
 </body>
 </html>
@@ -379,16 +376,13 @@ export async function handlePaymentCancel(req: Request, res: Response) {
     <div class="fail">❌</div>
     <h1>Оплата отменена</h1>
     <p>Платеж не был завершен. Вы можете вернуться в приложение и попробовать снова.</p>
-    <button class="btn" onclick="closeWindow()">Вернуться в приложение</button>
-    <p class="hint">Нажмите кнопку или закройте эту вкладку</p>
+    <a class="btn" href="childapp://payment-cancel?paymentId=${paymentId}">Вернуться в приложение</a>
+    <p class="hint">Вы будете автоматически перенаправлены...</p>
   </div>
   <script>
-    function closeWindow() {
-      if (window.close) {
-        window.close();
-      }
-      window.history.back();
-    }
+    setTimeout(function() {
+      window.location.href = 'childapp://payment-cancel?paymentId=${paymentId}';
+    }, 1500);
   </script>
 </body>
 </html>
