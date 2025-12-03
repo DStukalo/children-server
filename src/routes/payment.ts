@@ -1,26 +1,20 @@
 import { Request, Response } from "express";
 import crypto from "crypto";
+import {
+  createPayment as createPaymentInDb,
+  findPaymentById,
+  findPaymentByOrderId,
+  updatePaymentStatus,
+  updatePaymentStatusByOrderId,
+  Payment,
+} from "../models/payment";
+import { User } from "../types";
 
 const WEBPAY_STORE_ID = process.env.WEBPAY_STORE_ID || "";
 const WEBPAY_SECRET_KEY = process.env.WEBPAY_SECRET_KEY || "";
 const WEBPAY_URL = process.env.WEBPAY_API_URL?.includes("sandbox") 
   ? "https://securesandbox.webpay.by/" 
   : "https://payment.webpay.by/";
-
-const payments = new Map<string, {
-  paymentId: string;
-  orderId: string;
-  amount: number;
-  description: string;
-  currency: string;
-  status: "pending" | "success" | "failed";
-  courseId?: number;
-  stageId?: number;
-  createdAt: Date;
-  wsbSeed: string;
-  wsbTest: string;
-  wsbSignature: string;
-}>();
 
 function sha1hex(s: string): string {
   return crypto.createHash("sha1").update(s).digest("hex");
@@ -36,6 +30,7 @@ function generateWebPaySignature(wsbSeed: string, wsbStoreId: string, wsbOrderNu
 
 export async function createPayment(req: Request, res: Response) {
   const { amount, currency = "BYN", description, orderId, courseId, stageId } = req.body;
+  const currentUser = (req as any).user as User | undefined;
 
   if (amount === undefined || amount === null || !description || !orderId) {
     return res.status(400).json({ 
@@ -67,19 +62,19 @@ export async function createPayment(req: Request, res: Response) {
       WEBPAY_SECRET_KEY
     );
 
-    payments.set(paymentId, {
-      paymentId,
-      orderId,
+    // Save to PostgreSQL
+    await createPaymentInDb({
+      id: paymentId,
+      order_id: orderId,
+      user_id: currentUser?.id,
       amount,
-      description: description.substring(0, 255),
       currency,
-      status: "pending",
-      courseId,
-      stageId,
-      createdAt: new Date(),
-      wsbSeed,
-      wsbTest,
-      wsbSignature,
+      description: description.substring(0, 255),
+      course_id: courseId,
+      stage_id: stageId,
+      wsb_seed: wsbSeed,
+      wsb_test: wsbTest,
+      wsb_signature: wsbSignature,
     });
 
     const formUrl = `${baseUrl}/api/payment/form/${paymentId}`;
@@ -102,10 +97,10 @@ export async function createPayment(req: Request, res: Response) {
   }
 }
 
-export function servePaymentForm(req: Request, res: Response) {
+export async function servePaymentForm(req: Request, res: Response) {
   const { paymentId } = req.params;
   
-  const payment = payments.get(paymentId);
+  const payment = await findPaymentById(paymentId);
   if (!payment) {
     return res.status(404).send("Payment not found");
   }
@@ -164,15 +159,15 @@ export function servePaymentForm(req: Request, res: Response) {
     <input type="hidden" name="wsb_version" value="2">
     <input type="hidden" name="wsb_language_id" value="russian">
     <input type="hidden" name="wsb_storeid" value="${WEBPAY_STORE_ID}">
-    <input type="hidden" name="wsb_order_num" value="${payment.orderId}">
-    <input type="hidden" name="wsb_test" value="${payment.wsbTest}">
+    <input type="hidden" name="wsb_order_num" value="${payment.order_id}">
+    <input type="hidden" name="wsb_test" value="${payment.wsb_test}">
     <input type="hidden" name="wsb_currency_id" value="${payment.currency}">
-    <input type="hidden" name="wsb_seed" value="${payment.wsbSeed}">
+    <input type="hidden" name="wsb_seed" value="${payment.wsb_seed}">
     <input type="hidden" name="wsb_invoice_item_name[0]" value="${payment.description}">
     <input type="hidden" name="wsb_invoice_item_quantity[0]" value="1">
-    <input type="hidden" name="wsb_invoice_item_price[0]" value="${payment.amount.toFixed(2)}">
-    <input type="hidden" name="wsb_total" value="${payment.amount.toFixed(2)}">
-    <input type="hidden" name="wsb_signature" value="${payment.wsbSignature}">
+    <input type="hidden" name="wsb_invoice_item_price[0]" value="${Number(payment.amount).toFixed(2)}">
+    <input type="hidden" name="wsb_total" value="${Number(payment.amount).toFixed(2)}">
+    <input type="hidden" name="wsb_signature" value="${payment.wsb_signature}">
     <input type="hidden" name="wsb_return_url" value="${returnUrl}">
     <input type="hidden" name="wsb_cancel_return_url" value="${cancelUrl}">
     <input type="hidden" name="wsb_notify_url" value="${notifyUrl}">
@@ -196,7 +191,7 @@ export async function checkPaymentStatus(req: Request, res: Response) {
   }
 
   try {
-    const payment = payments.get(paymentId);
+    const payment = await findPaymentById(paymentId);
     
     if (!payment) {
       return res.status(404).json({ message: "Payment not found" });
@@ -226,12 +221,12 @@ export async function paymentCallback(req: Request, res: Response) {
       return res.status(400).json({ message: "Order number is required" });
     }
 
-    const payment = Array.from(payments.values()).find(p => p.orderId === wsb_order_num);
+    const payment = await updatePaymentStatusByOrderId(wsb_order_num, "success");
     
     if (payment) {
-      payment.status = "success";
-      payments.set(payment.paymentId, payment);
-      console.log(`[Callback] Payment ${payment.paymentId} marked as success`);
+      console.log(`[Callback] Payment ${payment.id} marked as success`);
+    } else {
+      console.log(`[Callback] Payment not found for order ${wsb_order_num}`);
     }
     
     res.status(200).send("OK");
@@ -246,10 +241,8 @@ export async function handlePaymentSuccess(req: Request, res: Response) {
   
   console.log(`[Success] Payment ${paymentId} success page`);
   
-  const payment = payments.get(paymentId as string);
-  if (payment) {
-    payment.status = "success";
-    payments.set(paymentId as string, payment);
+  if (paymentId) {
+    await updatePaymentStatus(paymentId as string, "success");
   }
 
   const html = `
@@ -321,10 +314,8 @@ export async function handlePaymentCancel(req: Request, res: Response) {
   
   console.log(`[Cancel] Payment ${paymentId} cancelled`);
   
-  const payment = payments.get(paymentId as string);
-  if (payment) {
-    payment.status = "failed";
-    payments.set(paymentId as string, payment);
+  if (paymentId) {
+    await updatePaymentStatus(paymentId as string, "failed");
   }
 
   const html = `
