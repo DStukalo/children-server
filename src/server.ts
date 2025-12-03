@@ -9,14 +9,12 @@ import { auth } from "./middleware/auth";
 import { initDb } from "./db";
 import { updateUser } from "./routes/update-user";
 import { 
-  createPayment, 
+  createPayment,
+  servePaymentForm,
   checkPaymentStatus, 
   paymentCallback,
   handlePaymentSuccess,
   handlePaymentCancel,
-  createTestPaymentPage,
-  handleTestPaymentSuccess,
-  handleTestPaymentFail
 } from "./routes/payment";
 
 const app = express();
@@ -37,14 +35,11 @@ app.get("/me", auth, me);
 app.patch("/me", auth, updateUser);
 
 app.post("/api/payment/create", auth, createPayment);
+app.get("/api/payment/form/:paymentId", servePaymentForm);
 app.get("/api/payment/status/:paymentId", auth, checkPaymentStatus);
 app.post("/api/payment/callback", paymentCallback);
 app.get("/api/payment/success", handlePaymentSuccess);
 app.get("/api/payment/cancel", handlePaymentCancel);
-
-app.get("/test-payment/:paymentId", createTestPaymentPage);
-app.get("/test-payment-success", handleTestPaymentSuccess);
-app.get("/test-payment-fail", handleTestPaymentFail);
 
 const port = Number(process.env.PORT ?? 4000);
 
