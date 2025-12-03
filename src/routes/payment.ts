@@ -18,9 +18,7 @@ const payments = new Map<string, {
 }>();
 
 function normalizeAmount(val: number): string {
-  if (val % 1 === 0) {
-    return String(Math.round(val));
-  }
+  // WebPay settings: "Разрядность дробной части: 2" - always use 2 decimal places
   return val.toFixed(2);
 }
 
@@ -86,7 +84,6 @@ export async function createPayment(req: Request, res: Response) {
     const wsbOrderNum = orderId;
     const wsbCurrencyId = currency;
     const wsbTotalString = normalizeAmount(amount);
-    const wsbTotalNumber = parseFloat(wsbTotalString);
     const wsbStoreIdNumber = Number(WEBPAY_STORE_ID);
     const wsbTest = WEBPAY_API_URL.includes("sandbox") ? 1 : 0;
     const wsbReturnUrl = `${baseUrl}/api/payment/success?paymentId=${paymentId}`;
@@ -95,7 +92,7 @@ export async function createPayment(req: Request, res: Response) {
 
     const itemName = description.substring(0, 255);
     const itemQuantity = 1;
-    const itemPriceNumber = parseFloat(normalizeAmount(amount));
+    const itemPriceString = normalizeAmount(amount);
 
     const webpayParams: Record<string, any> = {
       wsb_version: 2,
@@ -106,8 +103,8 @@ export async function createPayment(req: Request, res: Response) {
       wsb_currency_id: wsbCurrencyId,
       wsb_invoice_item_name: [itemName],
       wsb_invoice_item_quantity: [itemQuantity],
-      wsb_invoice_item_price: [itemPriceNumber],
-      wsb_total: wsbTotalNumber,
+      wsb_invoice_item_price: [itemPriceString],
+      wsb_total: wsbTotalString,
       wsb_return_url: wsbReturnUrl,
       wsb_cancel_return_url: wsbCancelReturnUrl,
       wsb_notify_url: wsbNotifyUrl,
