@@ -27,7 +27,7 @@ In the "Environment" section add:
 - `DATABASE_URL` = `postgresql://child_app_db_user:mSAAhAerx2ZZ9SbRyLMmfIAhfdgTWZmy@dpg-d4fg4ca4d50c73a1r6f0-a.frankfurt-postgres.render.com/child_app_db`
 - `PORT` = `10000` (Render will assign port automatically)
 - `WEBPAY_STORE_ID` = `411156299`
-- `WEBPAY_SECRET_KEY` = `Alc913!@#XyZ529*d8MnO456pLDc297N`
+- `WEBPAY_SECRET_KEY` = `Alc913!@#XyZ529`
 - `WEBPAY_API_URL` = `https://sandbox.webpay.by`
 - `PRODUCTION_URL` = `https://children-server.onrender.com` (or your Render URL)
 
