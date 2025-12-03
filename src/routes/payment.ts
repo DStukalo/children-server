@@ -272,21 +272,34 @@ export async function handlePaymentSuccess(req: Request, res: Response) {
     }
     .success { font-size: 80px; margin-bottom: 20px; }
     h1 { color: #10B981; margin: 0 0 15px; font-size: 28px; }
-    p { color: #6B7280; margin: 0 0 30px; font-size: 16px; line-height: 1.5; }
+    p { color: #6B7280; margin: 0 0 20px; font-size: 16px; line-height: 1.5; }
     .btn {
-      display: inline-block;
+      display: block;
       background: #10B981;
       color: white;
-      padding: 16px 40px;
+      padding: 18px 40px;
       border-radius: 12px;
       text-decoration: none;
       font-weight: 600;
-      font-size: 16px;
+      font-size: 18px;
       border: none;
       cursor: pointer;
+      margin: 10px 0;
     }
     .btn:active { background: #059669; }
-    .hint { color: #9CA3AF; font-size: 14px; margin-top: 20px; }
+    .btn-secondary {
+      background: #6B7280;
+      font-size: 14px;
+      padding: 12px 30px;
+    }
+    .btn-secondary:active { background: #4B5563; }
+    .hint { color: #9CA3AF; font-size: 13px; margin-top: 25px; line-height: 1.6; }
+    .hint-box {
+      background: #F3F4F6;
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 20px;
+    }
   </style>
 </head>
 <body>
@@ -294,13 +307,32 @@ export async function handlePaymentSuccess(req: Request, res: Response) {
     <div class="success">✅</div>
     <h1>Оплата успешна!</h1>
     <p>Спасибо за покупку! Ваш доступ активирован.</p>
-    <a class="btn" href="childapp://payment-success?paymentId=${paymentId}">Вернуться в приложение</a>
-    <p class="hint">Вы будете автоматически перенаправлены...</p>
+    <a class="btn" href="childapp://payment-success?paymentId=${paymentId}" id="returnBtn">Вернуться в приложение</a>
+    <div class="hint-box">
+      <p class="hint" style="margin:0">
+        Если кнопка не работает, просто закройте это окно.<br>
+        Покупка уже сохранена в вашем аккаунте.
+      </p>
+    </div>
   </div>
   <script>
+    var redirectAttempted = false;
+    
+    // Try auto-redirect after 1.5s
     setTimeout(function() {
-      window.location.href = 'childapp://payment-success?paymentId=${paymentId}';
+      if (!redirectAttempted) {
+        redirectAttempted = true;
+        window.location.href = 'childapp://payment-success?paymentId=${paymentId}';
+      }
     }, 1500);
+    
+    // Send message to WebView (for React Native)
+    if (window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'payment-success',
+        paymentId: '${paymentId}'
+      }));
+    }
   </script>
 </body>
 </html>
@@ -345,21 +377,28 @@ export async function handlePaymentCancel(req: Request, res: Response) {
     }
     .fail { font-size: 80px; margin-bottom: 20px; }
     h1 { color: #EF4444; margin: 0 0 15px; font-size: 28px; }
-    p { color: #6B7280; margin: 0 0 30px; font-size: 16px; line-height: 1.5; }
+    p { color: #6B7280; margin: 0 0 20px; font-size: 16px; line-height: 1.5; }
     .btn {
-      display: inline-block;
+      display: block;
       background: #EF4444;
       color: white;
-      padding: 16px 40px;
+      padding: 18px 40px;
       border-radius: 12px;
       text-decoration: none;
       font-weight: 600;
-      font-size: 16px;
+      font-size: 18px;
       border: none;
       cursor: pointer;
+      margin: 10px 0;
     }
     .btn:active { background: #DC2626; }
-    .hint { color: #9CA3AF; font-size: 14px; margin-top: 20px; }
+    .hint { color: #9CA3AF; font-size: 13px; margin-top: 25px; line-height: 1.6; }
+    .hint-box {
+      background: #F3F4F6;
+      border-radius: 8px;
+      padding: 15px;
+      margin-top: 20px;
+    }
   </style>
 </head>
 <body>
@@ -368,12 +407,28 @@ export async function handlePaymentCancel(req: Request, res: Response) {
     <h1>Оплата отменена</h1>
     <p>Платеж не был завершен. Вы можете вернуться в приложение и попробовать снова.</p>
     <a class="btn" href="childapp://payment-cancel?paymentId=${paymentId}">Вернуться в приложение</a>
-    <p class="hint">Вы будете автоматически перенаправлены...</p>
+    <div class="hint-box">
+      <p class="hint" style="margin:0">
+        Если кнопка не работает, просто закройте это окно.
+      </p>
+    </div>
   </div>
   <script>
+    var redirectAttempted = false;
+    
     setTimeout(function() {
-      window.location.href = 'childapp://payment-cancel?paymentId=${paymentId}';
+      if (!redirectAttempted) {
+        redirectAttempted = true;
+        window.location.href = 'childapp://payment-cancel?paymentId=${paymentId}';
+      }
     }, 1500);
+    
+    if (window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(JSON.stringify({
+        type: 'payment-failed',
+        paymentId: '${paymentId}'
+      }));
+    }
   </script>
 </body>
 </html>
