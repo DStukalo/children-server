@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import crypto from "crypto";
-import { sessions } from "../store";
+import jwt from "jsonwebtoken";
 import { findUserByEmail } from "../models/user";
 import { serializeUser } from "./serialize-user";
+import { JWT_SECRET, JWT_EXPIRES_IN } from "../config/jwt";
 
 export async function login(req: Request, res: Response) {
   const { email, password } = req.body;
@@ -14,8 +14,12 @@ export async function login(req: Request, res: Response) {
     if (!user || user.password !== password)
       return res.status(401).json({ message: "Invalid credentials" });
 
-    const token = crypto.randomUUID();
-    sessions[token] = user.id;
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user.id, email: user.email },
+      JWT_SECRET,
+      { expiresIn: JWT_EXPIRES_IN }
+    );
 
     res.json({
       message: "Login OK",
