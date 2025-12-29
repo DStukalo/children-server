@@ -5,7 +5,7 @@ import { findUserByEmail, insertUser } from "../models/user";
 import { serializeUser } from "./serialize-user";
 
 export async function register(req: Request, res: Response) {
-	const { email, password } = req.body;
+	const { email, password, userName } = req.body;
 
 	if (!email || !password) {
 		return res.status(400).json({ message: "Email + password required" });
@@ -23,7 +23,7 @@ export async function register(req: Request, res: Response) {
 			id: crypto.randomUUID(),
 			email,
 			password,
-			user_name: "John Doe",
+			user_name: userName || "John Doe",
 			avatar: "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
 			open_categories: [],
 			purchased_stages: [],
