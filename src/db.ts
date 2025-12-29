@@ -55,6 +55,27 @@ export async function initDb() {
   `);
 
 	console.log("✅ users table ensured");
+
+	await db.query(`
+    CREATE TABLE IF NOT EXISTS payments (
+      id UUID PRIMARY KEY,
+      order_id TEXT UNIQUE NOT NULL,
+      user_id UUID REFERENCES users(id),
+      amount DECIMAL(10,2) NOT NULL,
+      currency TEXT NOT NULL DEFAULT 'BYN',
+      description TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      course_id INT4,
+      stage_id INT4,
+      wsb_seed TEXT,
+      wsb_test TEXT,
+      wsb_signature TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    )
+  `);
+
+	console.log("✅ payments table ensured");
 }
 
 export async function query<T extends QueryResultRow = QueryResultRow>(

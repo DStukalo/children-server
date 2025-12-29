@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: children-server
+    env: node
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: PORT
+        value: 10000
+      - key: WEBPAY_STORE_ID
+        sync: false
+      - key: WEBPAY_SECRET_KEY
+        sync: false
+      - key: WEBPAY_API_URL
+        value: https://securesandbox.webpay.by
+      - key: PRODUCTION_URL
+        sync: false

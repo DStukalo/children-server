@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
-import { sessions } from "../store";
+import jwt from "jsonwebtoken";
 import { findUserById } from "../models/user";
+import { JWT_SECRET } from "../config/jwt";
 
 export async function auth(req: Request, res: Response, next: NextFunction) {
   const header = req.headers.authorization;
@@ -10,17 +11,24 @@ export async function auth(req: Request, res: Response, next: NextFunction) {
   if (type !== "Bearer" || !token)
     return res.status(401).json({ message: "Bad auth header" });
 
-  const userId = sessions[token];
-  if (!userId) return res.status(401).json({ message: "Invalid token" });
-
   try {
-    const user = await findUserById(userId);
+    // Verify JWT token
+    const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; email: string };
+    
+    // Load user from database
+    const user = await findUserById(decoded.userId);
     if (!user) return res.status(401).json({ message: "User not found" });
 
     (req as any).user = user;
     next();
   } catch (error) {
-    console.error("Failed to load user", error);
+    if (error instanceof jwt.JsonWebTokenError) {
+      return res.status(401).json({ message: "Invalid token" });
+    }
+    if (error instanceof jwt.TokenExpiredError) {
+      return res.status(401).json({ message: "Token expired" });
+    }
+    console.error("Failed to authenticate", error);
     res.status(500).json({ message: "Internal server error" });
   }
 }

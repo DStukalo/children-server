@@ -1,8 +1,10 @@
 import { Request, Response } from "express";
 import crypto from "crypto";
+import jwt from "jsonwebtoken";
 import { User } from "../types";
 import { findUserByEmail, insertUser } from "../models/user";
 import { serializeUser } from "./serialize-user";
+import { JWT_SECRET, JWT_EXPIRES_IN } from "../config/jwt";
 
 export async function register(req: Request, res: Response) {
 	const { email, password, userName } = req.body;
@@ -34,8 +36,16 @@ export async function register(req: Request, res: Response) {
 
 		await insertUser(user);
 
+		// Generate JWT token
+		const token = jwt.sign(
+			{ userId: user.id, email: user.email },
+			JWT_SECRET,
+			{ expiresIn: JWT_EXPIRES_IN }
+		);
+
 		res.json({
 			message: "Registered",
+			token,
 			user: serializeUser(user),
 		});
 	} catch (error) {
